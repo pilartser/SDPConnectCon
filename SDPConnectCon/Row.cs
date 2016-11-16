@@ -1,18 +1,10 @@
 ﻿using System;
-using System.Data;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 
-namespace SDPConnect
+namespace SDPConnectCon
 {
-    internal enum RowStatus
-    {
-        Added,
-        Treated,
-        Faulted,
-        Finished
-    }
-
     public class Row
     {
         internal const char Separator = ';';
@@ -40,6 +32,16 @@ namespace SDPConnect
             set { _date = value; }
         }
 
+        /// <summary>
+        /// Номер отделения
+        /// </summary>
+        public string BranchNo { get; set; }
+
+        /// <summary>
+        /// Номер кассира/УС/СБОЛ
+        /// </summary>
+        public string CashierNo { get; set; }
+        
         /// <summary>
         /// Уникальный код операции в ЕПС
         /// </summary>
@@ -99,7 +101,9 @@ namespace SDPConnect
                     .Select(p => new
                     {
                         Date = $"{p[0]} {p[1]}",
-                        Id = Id = p[4],
+                        BranchNo = p[2] ?? "",
+                        CashierNo = p[3] ?? "",
+                        Id = p[4] ?? "",
                         CardNumber = ConvertAccountToCardNumber(p[5]),
                         PaymentSum = p[9],
                         Amount = p[12],
@@ -139,29 +143,6 @@ namespace SDPConnect
             return $"000{account.Substring(3, account.Length-4)}";
         }
 
-        private void AddTo(DataTable dt)
-        {
-            var row = dt.Rows.Add();
-            foreach (var prop in typeof(Row).GetProperties())
-            {
-                row[$"col{prop.Name}"] = typeof(Row).GetProperty(prop.Name).GetValue(this, null);
-            }
-            row["colStatus"] = (int)RowStatus.Added;
-        }
-
-        
-
-        internal static DataTable PrepareDataTable()
-        {
-            DataTable dt = new DataTable();
-            foreach (var prop in typeof(Row).GetProperties())
-            {
-                dt.Columns.Add(new DataColumn($"col{prop.Name}"));
-            }
-            dt.Columns.Add(new DataColumn("colStatus"));
-            return dt;
-        }
-
         internal static bool CompareRows(Row[] rows, string[] line)
         {
             var controlLine = new[]{line}.Select(p => new {TotalCount = p[0], TotalAmount = p[1], TotalTransferSum = p[2], TotalCommissionSum = p[3]}).First();
@@ -194,48 +175,32 @@ namespace SDPConnect
             return ((totalCount == rows.Length) && (totalAmount == total.TotalAmount) && (totalTransferSum == total.TotalTransferSum) && (totalCommissionSum == total.TotalCommissionSum));
         }
 
-        //internal static void CustomizeGrid(DataGridView dgv)
-        //{
-        //    GridTools.AdjustColumn(dgv.Columns["colIndex"], "Номер строки", 50, 0);
-        //    GridTools.AdjustColumn(dgv.Columns["colDate"], "Дата платежа", 50, 1);
-        //    GridTools.AdjustColumn(dgv.Columns["colId"], "Уникальный код операции в ЕПС", 100, 2);
-        //    GridTools.AdjustColumn(dgv.Columns["colAccount"], "Лицевой счет", 50, 3, DataGridViewAutoSizeColumnMode.Fill);
-        //    GridTools.AdjustColumn(dgv.Columns["colPaymentSum"], "Сумма по услуге", 100, 4);
-        //    GridTools.AdjustColumn(dgv.Columns["colAmount"], "Общая сумма платежа", 100, 5);
-        //    GridTools.AdjustColumn(dgv.Columns["colTransferSum"], "Общая сумма перевода", 100, 6);
-        //    GridTools.AdjustColumn(dgv.Columns["colCommissionSum"], "Сумма комиссию банку от общей суммы", 100, 7);
-        //    GridTools.HideColumn(dgv.Columns["colStatus"]);
+        internal static void GenerateErrorReestr(string path, string[] lines, Row[] brokenRows)
+        {
+            try
+            {
+                using (var fs = File.CreateText(path))
+                {
+                    foreach (var row in brokenRows)
+                    {
+                        fs.WriteLine(lines[row.Index - 1]);
+                    }
+                    fs.WriteLine("=");
+                    var total = new
+                    {
+                        TotalAmount = brokenRows.Sum(p => p.Amount),
+                        TotalTransferSum = brokenRows.Sum(p => p.TransferSum),
+                        TotalCommissionSum = brokenRows.Sum(p => p.CommissionSum)
+                    };
+                    fs.WriteLine(
+                        $"{brokenRows.Length}{Separator}{total.TotalAmount}{Separator}{total.TotalTransferSum}{Separator}{total.TotalCommissionSum}{Separator}{Separator}");
+                }
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"Ошибка формирования реестра ошибочных строк {path}: {e.Message}");
+            }
+        }
 
-        //    dgv.CellPainting += dgv_CellPainting;
-        //}
-
-        //private static void dgv_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
-        //{
-        //    if (e.RowIndex == -1) return;
-        //    Color fontColor = GridTools.GetRowColor(
-        //        (RowStatus)int.Parse(((DataGridView)sender).Rows[e.RowIndex].Cells["colStatus"].Value.ToString()));
-        //    e.CellStyle.ForeColor = fontColor;
-        //    e.CellStyle.SelectionForeColor = fontColor;
-        //}
-
-        //internal static void FillGrid(DataGridView dgv, Row[] rows)
-        //{
-        //    if ((rows == null) || (dgv == null)) return;
-        //    dgv.DataSource = null;
-        //    var dt = PrepareDataTable();
-        //    try
-        //    {
-        //        foreach (var payLine in rows)
-        //        {
-        //            payLine.AddTo(dt);
-        //        }
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        throw new Exception($"Ошибка преобразования данных: {e.Message}");
-        //    }
-        //    dgv.DataSource = dt;
-        //    CustomizeGrid(dgv);
-        //}
     }
 }
