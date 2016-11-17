@@ -13,6 +13,17 @@ namespace SDPConnectCon
     {
         private string _path;
         private string _version;
+        private string _versionProtocol;
+
+
+        /// <summary>
+        /// Версия файла настроек
+        /// </summary>
+        [XmlAttribute(AttributeName = "version")]
+        public string Version {
+            get { return _version ?? "1.0"; }
+            set { _version = value; }
+        }
 
         /// <summary>
         /// Путь, по которому ищется файл .txt и куда пишется лог
@@ -52,10 +63,10 @@ namespace SDPConnectCon
         /// <summary>
         /// Идентификатор версии протокола
         /// </summary>
-        [XmlElement(ElementName = "version", IsNullable = true)]
-        public string Version {
-            get { return _version ?? "1"; }
-            set { _version = value; }
+        [XmlElement(ElementName = "versionProtocol", IsNullable = true)]
+        public string VersionProtocol {
+            get { return _versionProtocol ?? "1"; }
+            set { _versionProtocol = value; }
         }
     }
 }

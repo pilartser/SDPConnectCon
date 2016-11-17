@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Xml.Serialization;
 using SDPConnectCon.SDPService;
@@ -16,33 +18,34 @@ namespace SDPConnectCon
 
         private static void Main(string[] args)
         {
+            _logPath = $"logSdpConnectCon{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.log";
             try
             {
-                try
-                {
-                    _logPath = $"logSdpConnectCon{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.log";
-                    WriteLog($"Открываем лог {_logPath}");
-                    if (args.Length != 1)
-                        throw new Exception("В приложение ожидается передача только одного параметра.");
-                    WriteLog("Получаем файл настроек...");
-                    _settings = (SdpSettings) DeSerializeObject(typeof (SdpSettings), _settingsName);
-                    var fullPath = Path.Combine(_settings.Path, args[0]);
-                    if (!File.Exists(fullPath))
-                        throw new Exception($"Не найден файл {fullPath}.");
-                    LoadReestr(fullPath);
-                    Environment.ExitCode = 0;
-                }
-                catch (Exception e)
-                {
-                    WriteLog($"Выполнение программы завершается ошибкой: \r\n{e.Message}");
-                    Environment.ExitCode = 1;
-                }
+                
+                WriteLog($"Открываем лог {_logPath}");
+                WriteLog($"Номер версии исполняемого файла {Assembly.GetExecutingAssembly().GetName().Version}");
+                WriteLog($"Номер версии файла настроек {_settings.Version}");
+                if (args.Length != 1)
+                    throw new Exception("В приложение ожидается передача только одного параметра.");
+                WriteLog("Получаем файл настроек...");
+                _settings = (SdpSettings) DeSerializeObject(typeof (SdpSettings), _settingsName);
+                var fullPath = Path.Combine(_settings.Path, args[0]);
+                if (!File.Exists(fullPath))
+                    throw new Exception($"Не найден файл {fullPath}.");
+                LoadReestr(fullPath);
+                Environment.ExitCode = 0;
                 WriteLog("Закрываем лог");
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                Console.WriteLine($"Абсолютно непредвиденная ошибка: {e.Message}");
-                Console.ReadLine();
+                Environment.ExitCode = 1;
+                if (!File.Exists(_logPath))
+                {
+                    Console.WriteLine("Файл лога не смог быть создан.");
+                    Console.ReadLine();
+                }
+                else 
+                    WriteLog($"Выполнение программы завершается ошибкой: \r\n{e.Message}");
             }
         }
 
@@ -83,17 +86,19 @@ namespace SDPConnectCon
                 {
                     var str = brokenRows.Aggregate("",
                         (current, p) => current + p.Index + ((p.Index != brokenRows.Length) ? "," : ""));
-                    var errorReestrPath = Path.Combine(_settings.Path, $"ErrorSB_{Path.GetFileNameWithoutExtension(path)}_{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.txt");
+                    var errorReestrPath = Path.Combine(_settings.Path,
+                        $"ErrorSB_{Path.GetFileNameWithoutExtension(path)}_{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.txt");
                     Row.GenerateErrorReestr(errorReestrPath, lines, brokenRows);
-                    WriteLog($"Для строк {str} сгенерирован реестр ошибочных строк, пригодный для повторной загрузки {errorReestrPath}");
-                    throw new Exception($"Некоторые строки не были обработаны сервисом");
+                    WriteLog(
+                        $"Для строк {str} сгенерирован реестр ошибочных строк, пригодный для повторной загрузки {errorReestrPath}");
+                    throw new Exception($"Некоторые строки не были обработаны сервисом.");
                 }
                 WriteLog("Загрузка реестра успешно завершена");
             }
             catch (Exception e)
             {
                 _rows = null;
-                throw  new Exception($"При загрузке реестра произошла следующая ошибка: {e.Message}");
+                throw new Exception($"При загрузке реестра произошла следующая ошибка: {e.Message}");
             }
         }
 
@@ -101,23 +106,34 @@ namespace SDPConnectCon
         {
             try
             {
-                var sdp = new SdpServiceClient ();
+                var sdp = new SdpServiceClient();
+                
+
+                var strAggregateProps = typeof(Row).GetProperties()
+                    .Aggregate("{",
+                        (current, prop) => current + $"{prop.Name} = {prop.GetValue(row, null)}; ");
+                WriteLog($"Распознанная строка реестра: {strAggregateProps}}}");
 
                 var requestCardInfo = new CardInfoRequest
                 {
-                    version = _settings.Version,
+                    version = _settings.VersionProtocol,
                     agentId = _settings.AgentId,
                     salepointId = _settings.SalepointId,
                     sysNum = row.CardNumber,
                     regionId = _settings.RegionId,
                     deviceId = _settings.DeviceId
                 };
-                var str = typeof(CardInfoRequest).GetProperties().Aggregate("{", (current, prop) => current + $"{prop.Name} = {prop.GetValue(requestCardInfo, null)}; ");
-                WriteLog($"Заполненный данными перед отправкой CardInfoRequest: {str}}}");
+                
+                strAggregateProps = typeof (CardInfoRequest).GetProperties()
+                    .Aggregate("{",
+                        (current, prop) => current + $"{prop.Name} = {prop.GetValue(requestCardInfo, null)}; ");
+                WriteLog($"Заполненный данными перед отправкой CardInfoRequest: {strAggregateProps}}}");
 
                 var cardInfoResponse = sdp.CardInfo(requestCardInfo);
                 if (cardInfoResponse == null) throw new Exception("Получен пустой CardInfoResponse");
-                if (cardInfoResponse.Result.resultCode != 0) throw new Exception($"CardInfoResponse вернул следующую ошибку: {cardInfoResponse.Result.resultCodeText}");
+                if (cardInfoResponse.Result.resultCode != 0)
+                    throw new Exception(
+                        $"CardInfoResponse вернул следующую ошибку: {cardInfoResponse.Result.resultCodeText}");
                 if (cardInfoResponse.CardInformation.warningMsg != null)
                 {
                     WriteLog($"CardInfoResponse содержит следующие предупреждения:");
@@ -128,28 +144,32 @@ namespace SDPConnectCon
                 }
                 if (cardInfoResponse.CardInformation.tariff == null)
                     throw new Exception("CardInfoResponse не содержит ни одного тарифа.");
-
+                WriteLog("Успешно получен CardInfoResponse");
                 var requestCardPayment = new CardPaymentRequest
                 {
-                    version = _settings.Version,
+                    version = _settings.VersionProtocol,
                     agentId = _settings.AgentId,
                     salepointId = _settings.SalepointId,
                     sessionId = cardInfoResponse.CardInformation.sessionId,
                     tariffId = cardInfoResponse.CardInformation.tariff.id,
-                    paymentSum = (int)(row.PaymentSum * 100),
-                    paymentInfo = $"{row.BranchNo}_{row.CashierNo}"                   
+                    paymentSum = (int) (row.PaymentSum*100),
+                    paymentInfo = $"{row.BranchNo}_{row.CashierNo}"
                 };
-                str = typeof(CardPaymentRequest).GetProperties().Aggregate("{", (current, prop) => current + $"{prop.Name} = {prop.GetValue(requestCardPayment, null)}; ");
-                WriteLog($"Заполненный данными перед отправкой CardPaymentRequest: {str}}}");
+                strAggregateProps = typeof (CardPaymentRequest).GetProperties()
+                    .Aggregate("{",
+                        (current, prop) => current + $"{prop.Name} = {prop.GetValue(requestCardPayment, null)}; ");
+                WriteLog($"Заполненный данными перед отправкой CardPaymentRequest: {strAggregateProps}}}");
                 var cardPaymentResponse = sdp.CardPayment(requestCardPayment);
                 if (cardPaymentResponse == null) throw new Exception("Получен пустой CardPaymentResponse");
-                if (cardPaymentResponse.Result.resultCode != 0) throw new Exception($"CardPaymaentResponse вернул следующую ошибку: {cardPaymentResponse.Result.resultCodeText??""}");
+                if (cardPaymentResponse.Result.resultCode != 0)
+                    throw new Exception(
+                        $"CardPaymaentResponse вернул следующую ошибку: {cardPaymentResponse.Result.resultCodeText ?? ""}");
                 WriteLog($"Получен следующий чек:\r\n{cardPaymentResponse.CardPaymentInformation.cheq ?? ""}");
                 return true;
             }
             catch (Exception e)
             {
-                WriteLog($"Ошибка общения с сервисом: {e.Message} {e.InnerException?.Message??""}");
+                WriteLog($"Ошибка общения с сервисом: {e.Message} {e.InnerException?.Message ?? ""}");
                 WriteLog("\r\n");
             }
             return false;
@@ -178,7 +198,8 @@ namespace SDPConnectCon
             throw new Exception($"Ошибка получения содержимого файла {path}");
         }
 
-        public static void WriteSerializedObject(Type type, object serialized, string path, XmlSerializerNamespaces xmlns = null)
+        public static void WriteSerializedObject(Type type, object serialized, string path,
+            XmlSerializerNamespaces xmlns = null)
         {
             try
             {
@@ -197,7 +218,6 @@ namespace SDPConnectCon
             {
                 WriteLog($"Error: {e.Message}");
             }
-
         }
 
         private static void WriteLog(string str)
@@ -214,7 +234,6 @@ namespace SDPConnectCon
             {
                 throw new Exception($"Ошибка записи в файл {_logPath}");
             }
-            
         }
     }
 }

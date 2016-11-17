@@ -134,7 +134,11 @@ namespace SDPConnectCon
                     DigitalComma, out _comissionSum))
                 throw new Exception(
                     $"Ошибка приведения суммы комиссии банка от общей суммы к float {row.CommissionSum}");
+
             Index = index;
+            Id = row.Id;
+            BranchNo = row.BranchNo;
+            CashierNo = row.CashierNo;
         }
 
         private string ConvertAccountToCardNumber(string account)
