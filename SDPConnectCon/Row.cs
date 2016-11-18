@@ -141,6 +141,13 @@ namespace SDPConnectCon
             CashierNo = row.CashierNo;
         }
 
+        public override string ToString()
+        {
+            return GetType().GetProperties()
+                    .Aggregate("{",
+                        (current, prop) => current + $"{prop.Name} = {prop.GetValue(this, null)}; ");
+        }
+
         private string ConvertAccountToCardNumber(string account)
         {
             if (account.Length <= 4) throw new ArgumentException("Длина счета должна быть больше 4 символов");

@@ -16,7 +16,7 @@ namespace SDPConnectCon
         private static SdpSettings _settings;
         private static string _logPath;
 
-        private static void Main(string[] args)
+        private static int Main(string[] args)
         {
             _logPath = $"logSdpConnectCon{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.log";
             try
@@ -33,8 +33,8 @@ namespace SDPConnectCon
                 if (!File.Exists(fullPath))
                     throw new Exception($"Не найден файл {fullPath}.");
                 LoadReestr(fullPath);
-                Environment.ExitCode = 0;
                 WriteLog("Закрываем лог");
+                return 0;
             }
             catch (Exception e)
             {
@@ -47,6 +47,7 @@ namespace SDPConnectCon
                 else 
                     WriteLog($"Выполнение программы завершается ошибкой: \r\n{e.Message}");
             }
+            return 666;
         }
 
         private static void LoadReestr(string path)
@@ -66,10 +67,10 @@ namespace SDPConnectCon
                 var payLines = lines.Select((a, i) => new {Value = a, Index = i + 1})
                     .Where(row => (row.Index < lines.Length - 1)).ToList();
 
-                var brokenLines = payLines.Where(row => row.Value.Split(Row.Separator).Length != 15).ToList();
-                if (brokenLines.Any())
+                var badFormatLines = payLines.Where(row => row.Value.Split(Row.Separator).Length != 15).ToList();
+                if (badFormatLines.Any())
                 {
-                    foreach (var line in brokenLines)
+                    foreach (var line in badFormatLines)
                     {
                         WriteLog($"Строка {line.Index}, содержит не 15 полей: \"{line.Value}\".");
                     }
@@ -81,14 +82,14 @@ namespace SDPConnectCon
                     throw new Exception("Контрольная строка не совпадает с загруженными данными.");
                 WriteLog("Контрольная строка совпадает с загруженными данными.");
                 WriteLog("Начало работы с сервисом...\r\n");
-                var brokenRows = _rows.Where(p => !ServiceCall(p)).ToArray();
-                if (brokenRows.Length > 0)
+                var badThreatingByServiceLines = _rows.Where(p => !ServiceCall(p)).ToArray();
+                if (badThreatingByServiceLines.Length > 0)
                 {
-                    var str = brokenRows.Aggregate("",
-                        (current, p) => current + p.Index + ((p.Index != brokenRows.Length) ? "," : ""));
+                    var str = badThreatingByServiceLines.Aggregate("",
+                        (current, p) => current + p.Index + ((p.Index != badThreatingByServiceLines.Length) ? "," : ""));
                     var errorReestrPath = Path.Combine(_settings.Path,
                         $"ErrorSB_{Path.GetFileNameWithoutExtension(path)}_{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.txt");
-                    Row.GenerateErrorReestr(errorReestrPath, lines, brokenRows);
+                    Row.GenerateErrorReestr(errorReestrPath, lines, badThreatingByServiceLines);
                     WriteLog(
                         $"Для строк {str} сгенерирован реестр ошибочных строк, пригодный для повторной загрузки {errorReestrPath}");
                     throw new Exception($"Некоторые строки не были обработаны сервисом.");
@@ -109,10 +110,7 @@ namespace SDPConnectCon
                 var sdp = new SdpServiceClient();
                 
 
-                var strAggregateProps = typeof(Row).GetProperties()
-                    .Aggregate("{",
-                        (current, prop) => current + $"{prop.Name} = {prop.GetValue(row, null)}; ");
-                WriteLog($"Распознанная строка реестра: {strAggregateProps}}}");
+                WriteLog($"Распознанная строка реестра: {row}}}");
 
                 var requestCardInfo = new CardInfoRequest
                 {
@@ -124,10 +122,10 @@ namespace SDPConnectCon
                     deviceId = _settings.DeviceId
                 };
                 
-                strAggregateProps = typeof (CardInfoRequest).GetProperties()
+                var requestProps = typeof (CardInfoRequest).GetProperties()
                     .Aggregate("{",
                         (current, prop) => current + $"{prop.Name} = {prop.GetValue(requestCardInfo, null)}; ");
-                WriteLog($"Заполненный данными перед отправкой CardInfoRequest: {strAggregateProps}}}");
+                WriteLog($"Заполненный данными перед отправкой CardInfoRequest: {requestProps}}}");
 
                 var cardInfoResponse = sdp.CardInfo(requestCardInfo);
                 if (cardInfoResponse == null) throw new Exception("Получен пустой CardInfoResponse");
@@ -155,10 +153,10 @@ namespace SDPConnectCon
                     paymentSum = (int) (row.PaymentSum*100),
                     paymentInfo = $"{row.BranchNo}_{row.CashierNo}"
                 };
-                strAggregateProps = typeof (CardPaymentRequest).GetProperties()
+                requestProps = typeof (CardPaymentRequest).GetProperties()
                     .Aggregate("{",
                         (current, prop) => current + $"{prop.Name} = {prop.GetValue(requestCardPayment, null)}; ");
-                WriteLog($"Заполненный данными перед отправкой CardPaymentRequest: {strAggregateProps}}}");
+                WriteLog($"Заполненный данными перед отправкой CardPaymentRequest: {requestProps}}}");
                 var cardPaymentResponse = sdp.CardPayment(requestCardPayment);
                 if (cardPaymentResponse == null) throw new Exception("Получен пустой CardPaymentResponse");
                 if (cardPaymentResponse.Result.resultCode != 0)
