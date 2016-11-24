@@ -142,6 +142,11 @@ namespace SDPConnectCon
                 }
                 if (cardInfoResponse.CardInformation.tariff == null)
                     throw new Exception("CardInfoResponse не содержит ни одного тарифа.");
+                int paymentSumKopecks = row.GetPaymentSumKopecks();
+                if (paymentSumKopecks < cardInfoResponse.CardInformation.tariff.minSumInt)
+                    throw  new Exception($"Сумма пополнения {paymentSumKopecks} меньше минимально разрешенной {cardInfoResponse.CardInformation.tariff.minSumInt}");
+                if (paymentSumKopecks > cardInfoResponse.CardInformation.tariff.maxSumInt)
+                    throw new Exception($"Сумма пополнения {paymentSumKopecks} больше максимально разрешенной {cardInfoResponse.CardInformation.tariff.maxSumInt}");
                 WriteLog("Успешно получен CardInfoResponse");
                 var requestCardPayment = new CardPaymentRequest
                 {
@@ -150,7 +155,7 @@ namespace SDPConnectCon
                     salepointId = _settings.SalepointId,
                     sessionId = cardInfoResponse.CardInformation.sessionId,
                     tariffId = cardInfoResponse.CardInformation.tariff.id,
-                    paymentSum = (int) (row.PaymentSum*100),
+                    paymentSum = paymentSumKopecks,
                     paymentInfo = $"{row.BranchNo}_{row.CashierNo}"
                 };
                 requestProps = typeof (CardPaymentRequest).GetProperties()

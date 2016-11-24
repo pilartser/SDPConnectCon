@@ -141,6 +141,11 @@ namespace SDPConnectCon
             CashierNo = row.CashierNo;
         }
 
+        public int GetPaymentSumKopecks()
+        {
+            return (int) (_paymentSum*100);
+        }
+
         public override string ToString()
         {
             return GetType().GetProperties()
