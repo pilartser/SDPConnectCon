@@ -85,8 +85,8 @@ namespace SDPConnectCon
                 var badThreatingByServiceLines = _rows.Where(p => !ServiceCall(p)).ToArray();
                 if (badThreatingByServiceLines.Length > 0)
                 {
-                    var str = badThreatingByServiceLines.Aggregate("",
-                        (current, p) => current + p.Index + ((p.Index != badThreatingByServiceLines.Length) ? "," : ""));
+                    var str = badThreatingByServiceLines.Select((p,i) => new {RowIndex = p.Index, ArrayIndex = i}).Aggregate("",
+                        (current, p) => current + p.RowIndex + ((p.ArrayIndex + 1 != badThreatingByServiceLines.Length) ? "," : ""));
                     var errorReestrPath = Path.Combine(_settings.Path,
                         $"ErrorSB_{Path.GetFileNameWithoutExtension(path)}_{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.txt");
                     Row.GenerateErrorReestr(errorReestrPath, lines, badThreatingByServiceLines);
@@ -167,7 +167,7 @@ namespace SDPConnectCon
                 if (cardPaymentResponse.Result.resultCode != 0)
                     throw new Exception(
                         $"CardPaymaentResponse вернул следующую ошибку: {cardPaymentResponse.Result.resultCodeText ?? ""}");
-                WriteLog($"Получен следующий чек:\r\n{cardPaymentResponse.CardPaymentInformation.cheq ?? ""}");
+                WriteLog($"Получен следующий чек:\r\n{cardPaymentResponse.CardPaymentInformation.cheq ?? ""}\r\n");
                 return true;
             }
             catch (Exception e)
