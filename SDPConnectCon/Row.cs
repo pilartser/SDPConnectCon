@@ -12,10 +12,10 @@ namespace SDPConnectCon
         private DateTime _date;
 
         private int _cardNumber;
-        private float _paymentSum;
-        private float _amount;
-        private float _transferSum;
-        private float _comissionSum;
+        private decimal _paymentSum;
+        private decimal _amount;
+        private decimal _transferSum;
+        private decimal _comissionSum;
 
         /// <summary>
         /// Номер строки в реестре (начинается с 1)
@@ -59,7 +59,7 @@ namespace SDPConnectCon
         /// <summary>
         /// Сумма по услуге
         /// </summary>
-        public float PaymentSum
+        public decimal PaymentSum
         {
             get { return _paymentSum; }
             set { _paymentSum = value; }
@@ -68,7 +68,7 @@ namespace SDPConnectCon
         /// <summary>
         /// Общая сумма платежа
         /// </summary>
-        public float Amount
+        public decimal Amount
         {
             get { return _amount; }
             set { _amount = value; }
@@ -77,7 +77,7 @@ namespace SDPConnectCon
         /// <summary>
         /// Общая сумма перевода
         /// </summary>
-        public float TransferSum
+        public decimal TransferSum
         {
             get { return _transferSum; }
             set { _transferSum = value; }
@@ -86,7 +86,7 @@ namespace SDPConnectCon
         /// <summary>
         /// Сумма комиссии банку от общей суммы
         /// </summary>
-        public float CommissionSum
+        public decimal CommissionSum
         {
             get { return _comissionSum; }
             set { _comissionSum = value; }
@@ -118,22 +118,22 @@ namespace SDPConnectCon
             if (!int.TryParse(row.CardNumber, out _cardNumber))
                 throw new Exception($"Ошибка приведения номера карты к integer {row.CardNumber}");
             if (
-                !float.TryParse(row.PaymentSum, NumberStyles.AllowDecimalPoint,
+                !decimal.TryParse(row.PaymentSum, NumberStyles.AllowDecimalPoint,
                     DigitalComma, out _paymentSum))
-                throw new Exception($"Ошибка приведения суммы по услуге к float {row.PaymentSum}");
+                throw new Exception($"Ошибка приведения суммы по услуге к decimal {row.PaymentSum}");
             if (
-                !float.TryParse(row.Amount, NumberStyles.AllowDecimalPoint,
+                !decimal.TryParse(row.Amount, NumberStyles.AllowDecimalPoint,
                     DigitalComma, out _amount))
-                throw new Exception($"Ошибка приведения общей суммы платежа к float {row.Amount}");
+                throw new Exception($"Ошибка приведения общей суммы платежа к decimal {row.Amount}");
             if (
-                !float.TryParse(row.TransferSum, NumberStyles.AllowDecimalPoint,
+                !decimal.TryParse(row.TransferSum, NumberStyles.AllowDecimalPoint,
                     DigitalComma, out _transferSum))
-                throw new Exception($"Ошибка приведения общей суммы перевода к float {row.TransferSum}");
+                throw new Exception($"Ошибка приведения общей суммы перевода к decimal {row.TransferSum}");
             if (
-                !float.TryParse(row.CommissionSum, NumberStyles.AllowDecimalPoint,
+                !decimal.TryParse(row.CommissionSum, NumberStyles.AllowDecimalPoint,
                     DigitalComma, out _comissionSum))
                 throw new Exception(
-                    $"Ошибка приведения суммы комиссии банка от общей суммы к float {row.CommissionSum}");
+                    $"Ошибка приведения суммы комиссии банка от общей суммы к decimal {row.CommissionSum}");
 
             Index = index;
             Id = row.Id;
@@ -163,23 +163,23 @@ namespace SDPConnectCon
         {
             var controlLine = new[]{line}.Select(p => new {TotalCount = p[0], TotalAmount = p[1], TotalTransferSum = p[2], TotalCommissionSum = p[3]}).First();
             int totalCount;
-            float totalAmount;
-            float totalTransferSum;
-            float totalCommissionSum;
+            decimal totalAmount;
+            decimal totalTransferSum;
+            decimal totalCommissionSum;
 
             if (!int.TryParse(controlLine.TotalCount, out totalCount)) throw new Exception($"Ошибка приведения количества строк в реестре к int {controlLine.TotalCount}");
             if (
-                !float.TryParse(controlLine.TotalAmount, NumberStyles.AllowDecimalPoint,
+                !decimal.TryParse(controlLine.TotalAmount, NumberStyles.AllowDecimalPoint,
                     DigitalComma, out totalAmount))
-                throw new Exception($"Ошибка приведения общей суммы принятых средств к float {controlLine.TotalAmount}");
+                throw new Exception($"Ошибка приведения общей суммы принятых средств к decimal {controlLine.TotalAmount}");
             if (
-                !float.TryParse(controlLine.TotalTransferSum, NumberStyles.AllowDecimalPoint,
+                !decimal.TryParse(controlLine.TotalTransferSum, NumberStyles.AllowDecimalPoint,
                     DigitalComma, out totalTransferSum))
-                throw new Exception($"Ошибка приведения общей суммы перечисления клиенту к float {controlLine.TotalTransferSum}");
+                throw new Exception($"Ошибка приведения общей суммы перечисления клиенту к decimal {controlLine.TotalTransferSum}");
             if (
-                !float.TryParse(controlLine.TotalCommissionSum, NumberStyles.AllowDecimalPoint,
+                !decimal.TryParse(controlLine.TotalCommissionSum, NumberStyles.AllowDecimalPoint,
                     DigitalComma, out totalCommissionSum))
-                throw new Exception($"Ошибка приведения общей комиссии банку к float {controlLine.TotalCommissionSum}");
+                throw new Exception($"Ошибка приведения общей комиссии банку к decimal {controlLine.TotalCommissionSum}");
 
             var total =  new
             {
