@@ -9,88 +9,65 @@ namespace SDPConnectCon
     {
         internal const char Separator = ';';
         private static readonly NumberFormatInfo DigitalComma = new NumberFormatInfo { NumberDecimalSeparator = "," };
-        private DateTime _date;
 
-        private int _cardNumber;
-        private decimal _paymentSum;
-        private decimal _amount;
-        private decimal _transferSum;
-        private decimal _comissionSum;
+        private readonly DateTime _date;
+
+        private readonly int _cardNumber;
+        private readonly decimal _paymentSum;
+        private readonly decimal _amount;
+        private readonly decimal _transferSum;
+        private readonly decimal _comissionSum;
 
         /// <summary>
         /// Номер строки в реестре (начинается с 1)
         /// </summary>
-        public int Index { get; set; }
+        public int Index { get; }
 
 
         /// <summary>
         /// Дата и время платежа
         /// </summary>
-        public DateTime Date
-        {
-            get { return _date; }
-            set { _date = value; }
-        }
+        public DateTime Date => _date;
 
         /// <summary>
         /// Номер отделения
         /// </summary>
-        public string BranchNo { get; set; }
+        public string BranchNo { get; }
 
         /// <summary>
         /// Номер кассира/УС/СБОЛ
         /// </summary>
-        public string CashierNo { get; set; }
+        public string CashierNo { get;}
         
         /// <summary>
         /// Уникальный код операции в ЕПС
         /// </summary>
-        public string Id { get; set; }
+        public string Id { get;}
 
         /// <summary>
         /// Номер карты
         /// </summary>
-        public int CardNumber
-        {
-            get { return _cardNumber; }
-            set { _cardNumber = value; }
-        }
+        public int CardNumber => _cardNumber;
 
         /// <summary>
         /// Сумма по услуге
         /// </summary>
-        public decimal PaymentSum
-        {
-            get { return _paymentSum; }
-            set { _paymentSum = value; }
-        }
+        public decimal PaymentSum => _paymentSum;
 
         /// <summary>
         /// Общая сумма платежа
         /// </summary>
-        public decimal Amount
-        {
-            get { return _amount; }
-            set { _amount = value; }
-        }
+        public decimal Amount => _amount;
 
         /// <summary>
         /// Общая сумма перевода
         /// </summary>
-        public decimal TransferSum
-        {
-            get { return _transferSum; }
-            set { _transferSum = value; }
-        }
+        public decimal TransferSum => _transferSum;
 
         /// <summary>
         /// Сумма комиссии банку от общей суммы
         /// </summary>
-        public decimal CommissionSum
-        {
-            get { return _comissionSum; }
-            set { _comissionSum = value; }
-        }
+        public decimal CommissionSum => _comissionSum;
 
         public Row(int index, string str)
         {

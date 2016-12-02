@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -11,28 +10,30 @@ namespace SDPConnectCon
 {
     internal class Program
     {
-        private static Row[] _rows;
         private static string _settingsName = "settings.xml";
         private static SdpSettings _settings;
         private static string _logPath;
 
         private static int Main(string[] args)
         {
-            _logPath = $"logSdpConnectCon{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.log";
+            //_logPath = $"logSdpConnectCon{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.log";
             try
             {
-                
-                WriteLog($"Открываем лог {_logPath}");
-                WriteLog($"Номер версии исполняемого файла {Assembly.GetExecutingAssembly().GetName().Version}");
-                WriteLog($"Номер версии файла настроек {_settings.Version}");
+                //Пытаемся десериализовать файл настроек
+                Console.WriteLine("Открываем файл настроек...");
+                _settings = (SdpSettings)DeSerializeObject(typeof(SdpSettings), _settingsName);
+                _logPath = Path.Combine(_settings.PathLog ,$"logSdpConnectCon{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.log");
+                WriteLog($"Открываем лог {_logPath}...");
                 if (args.Length != 1)
                     throw new Exception("В приложение ожидается передача только одного параметра.");
-                WriteLog("Получаем файл настроек...");
-                _settings = (SdpSettings) DeSerializeObject(typeof (SdpSettings), _settingsName);
-                var fullPath = Path.Combine(_settings.Path, args[0]);
-                if (!File.Exists(fullPath))
-                    throw new Exception($"Не найден файл {fullPath}.");
-                LoadReestr(fullPath);
+                
+                WriteLog($"Номер версии исполняемого файла {Assembly.GetExecutingAssembly().GetName().Version}");
+                WriteLog($"Номер версии файла настроек {_settings.Version}");
+                
+                var registryPath = Path.Combine(_settings.PathRegistry, args[0]);
+                if (!File.Exists(registryPath))
+                    throw new Exception($"Не найден файл реестра{registryPath}.");
+                LoadReestr(registryPath);
                 WriteLog("Закрываем лог");
                 return 0;
             }
@@ -57,16 +58,17 @@ namespace SDPConnectCon
                 WriteLog("Начинается загрузка реестра...\r\n");
 
                 WriteLog($"Открыт файл: {path}.");
-                _rows = null;
+                //Получаем все строчки из файла
                 var lines = File.ReadAllLines(path, Encoding.GetEncoding(1251));
                 if (lines.Length == 0) throw new Exception("В реестре не обнаружено ни одной строки.");
                 if ((lines.Length < 3) || (lines[lines.Length - 2] != "="))
                     throw new Exception("В реестре не обнаружен признак контрольной строки.");
                 var controlLine = lines[lines.Length - 1].Split(Row.Separator).ToArray();
                 if (controlLine.Length != 6) throw new Exception("В контрольной строке не 6 полей.");
+                //Получаем строчки с пополнениями(предполагаем, что все строчки кроме последних двух)
                 var payLines = lines.Select((a, i) => new {Value = a, Index = i + 1})
                     .Where(row => (row.Index < lines.Length - 1)).ToList();
-
+                //Из строчек с пополнениями находим те, которые разделяются ; на 15 частей
                 var badFormatLines = payLines.Where(row => row.Value.Split(Row.Separator).Length != 15).ToList();
                 if (badFormatLines.Any())
                 {
@@ -77,17 +79,20 @@ namespace SDPConnectCon
                     throw new Exception(
                         $"При загрузке данных найдены строки, содержащие не 15 полей.");
                 }
-                _rows = payLines.Select(p => new Row(p.Index, p.Value)).ToArray();
-                if (!Row.CompareRows(_rows, controlLine))
+                //Получаем массив Row[]
+                var rows = payLines.Select(p => new Row(p.Index, p.Value)).ToArray();
+                //Сравниваем с контрольной строкой
+                if (!Row.CompareRows(rows, controlLine))
                     throw new Exception("Контрольная строка не совпадает с загруженными данными.");
                 WriteLog("Контрольная строка совпадает с загруженными данными.");
                 WriteLog("Начало работы с сервисом...\r\n");
-                var badThreatingByServiceLines = _rows.Where(p => !ServiceCall(p)).ToArray();
+                //Получаем массив строк, обработка которых не завершилась успехом
+                var badThreatingByServiceLines = rows.Where(p => !ServiceCall(p)).ToArray();
                 if (badThreatingByServiceLines.Length > 0)
                 {
                     var str = badThreatingByServiceLines.Select((p,i) => new {RowIndex = p.Index, ArrayIndex = i}).Aggregate("",
                         (current, p) => current + p.RowIndex + ((p.ArrayIndex + 1 != badThreatingByServiceLines.Length) ? "," : ""));
-                    var errorReestrPath = Path.Combine(_settings.Path,
+                    var errorReestrPath = Path.Combine(_settings.PathErrorRegistry,
                         $"ErrorSB_{Path.GetFileNameWithoutExtension(path)}_{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.txt");
                     Row.GenerateErrorReestr(errorReestrPath, lines, badThreatingByServiceLines);
                     WriteLog(
@@ -98,7 +103,6 @@ namespace SDPConnectCon
             }
             catch (Exception e)
             {
-                _rows = null;
                 throw new Exception($"При загрузке реестра произошла следующая ошибка: {e.Message}");
             }
         }
@@ -108,7 +112,7 @@ namespace SDPConnectCon
             try
             {
                 var sdp = new SdpServiceClient();
-                
+
 
                 WriteLog($"Распознанная строка реестра: {row}}}");
 
@@ -235,6 +239,7 @@ namespace SDPConnectCon
             }
             catch (Exception)
             {
+                Console.WriteLine($"Ошибка записи в файл {_logPath}");
                 throw new Exception($"Ошибка записи в файл {_logPath}");
             }
         }
