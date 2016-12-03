@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Xml.Serialization;
 using SDPConnectCon.SDPService;
@@ -10,19 +11,19 @@ namespace SDPConnectCon
 {
     internal class Program
     {
-        private static string _settingsName = "settings.xml";
+        private static string _pathSettings = "settings.xml";
         private static SdpSettings _settings;
         private static string _logPath;
 
         private static int Main(string[] args)
         {
-            //_logPath = $"logSdpConnectCon{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.log";
             try
             {
                 //Пытаемся десериализовать файл настроек
                 Console.WriteLine("Открываем файл настроек...");
-                _settings = (SdpSettings)DeSerializeObject(typeof(SdpSettings), _settingsName);
-                _logPath = Path.Combine(_settings.PathLog ,$"logSdpConnectCon{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.log");
+                _settings = (SdpSettings)DeSerializeObject(typeof(SdpSettings), _pathSettings);
+
+                _logPath = System.IO.Path.Combine(_settings.Pathes.Log ,$"logSdpConnectCon{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.log");
                 WriteLog($"Открываем лог {_logPath}...");
                 if (args.Length != 1)
                     throw new Exception("В приложение ожидается передача только одного параметра.");
@@ -30,9 +31,9 @@ namespace SDPConnectCon
                 WriteLog($"Номер версии исполняемого файла {Assembly.GetExecutingAssembly().GetName().Version}");
                 WriteLog($"Номер версии файла настроек {_settings.Version}");
                 
-                var registryPath = Path.Combine(_settings.PathRegistry, args[0]);
+                var registryPath = System.IO.Path.Combine(_settings.Pathes.Registry, args[0]);
                 if (!File.Exists(registryPath))
-                    throw new Exception($"Не найден файл реестра{registryPath}.");
+                    throw new Exception($"Не найден файл реестра {registryPath}.");
                 LoadReestr(registryPath);
                 WriteLog("Закрываем лог");
                 return 0;
@@ -92,8 +93,8 @@ namespace SDPConnectCon
                 {
                     var str = badThreatingByServiceLines.Select((p,i) => new {RowIndex = p.Index, ArrayIndex = i}).Aggregate("",
                         (current, p) => current + p.RowIndex + ((p.ArrayIndex + 1 != badThreatingByServiceLines.Length) ? "," : ""));
-                    var errorReestrPath = Path.Combine(_settings.PathErrorRegistry,
-                        $"ErrorSB_{Path.GetFileNameWithoutExtension(path)}_{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.txt");
+                    var errorReestrPath = System.IO.Path.Combine(_settings.Pathes.ErrorRegistry,
+                        $"ErrorSB_{System.IO.Path.GetFileNameWithoutExtension(path)}_{DateTime.Now.ToString("ddMMyyyy_HHmmss")}.txt");
                     Row.GenerateErrorReestr(errorReestrPath, lines, badThreatingByServiceLines);
                     WriteLog(
                         $"Для строк {str} сгенерирован реестр ошибочных строк, пригодный для повторной загрузки {errorReestrPath}");
@@ -188,7 +189,7 @@ namespace SDPConnectCon
             {
                 using (var fs = new FileStream(path, FileMode.Open))
                 {
-                    XmlSerializer xs = new XmlSerializer(type);
+                    var xs = new XmlSerializer(type);
                     return xs.Deserialize(fs);
                 }
             }

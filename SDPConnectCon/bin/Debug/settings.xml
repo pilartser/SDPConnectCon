@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<settings version = "1.0">
-  <path>D:\Documents\Workspace\Test_projects\SDPConnectCon\SDPConnectCon\bin\Debug</path>
+<settings version = "1.1">
+  <path>
+	<log>Log</log>
+	<registry>Registry</registry>
+	<errorRegistry>ErrorRegistry</errorRegistry>
+  </path>
   <agentId>1</agentId>
   <salepointId>1</salepointId>
   <regionId>99</regionId>
   <deviceId>99999</deviceId>
-  <version>1</version>
+  <versionProtocol>1</versionProtocol>
 </settings>
