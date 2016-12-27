@@ -58,17 +58,21 @@ namespace SDPConnectCon
             {
                 WriteLog("Начинается загрузка реестра...\r\n");
 
-                WriteLog($"Открыт файл: {path}.");
-                //Получаем все строчки из файла
-                var lines = File.ReadAllLines(path, Encoding.GetEncoding(1251));
+                WriteLog($"Открыт файл: {path}. Все пустые строки будут проигнорированы!");
+                //Получаем все непустые строчки из файла
+                var lines = File.ReadAllLines(path, Encoding.GetEncoding(1251)).Where(p => (p.Length > 0)).ToArray();
                 if (lines.Length == 0) throw new Exception("В реестре не обнаружено ни одной строки.");
-                if ((lines.Length < 3) || (lines[lines.Length - 2] != "="))
+                if ((lines.Length < 2) || (lines.Last().Length == 0) || (lines.Last()[0] != '='))
                     throw new Exception("В реестре не обнаружен признак контрольной строки.");
-                var controlLine = lines[lines.Length - 1].Split(Row.Separator).ToArray();
-                if (controlLine.Length != 6) throw new Exception("В контрольной строке не 6 полей.");
-                //Получаем строчки с пополнениями(предполагаем, что все строчки кроме последних двух)
-                var payLines = lines.Select((a, i) => new {Value = a, Index = i + 1})
-                    .Where(row => (row.Index < lines.Length - 1)).ToList();
+                //Массив контрольной строки
+                var controlLine = lines.Last().Substring(1).Split(Row.Separator).ToArray();
+                if (controlLine.Length < 6) throw new Exception("В контрольной строке меньше 6 полей.");
+                //Конструируем разделитель между инфой о клиенте и непосредственно о переводе
+                var sepClientTransfer =
+                    new string(Row.Separator, 58);
+                //Получаем строчки с пополнениями(предполагаем, что все строчки кроме последней)
+                var payLines = lines.Select((a, i) => new {Value = a.Replace(sepClientTransfer, Row.Separator.ToString()), Index = i + 1})
+                    .Where(row => (row.Index != lines.Length)).ToList();
                 //Из строчек с пополнениями находим те, которые разделяются ; на 15 частей
                 var badFormatLines = payLines.Where(row => row.Value.Split(Row.Separator).Length != 15).ToList();
                 if (badFormatLines.Any())

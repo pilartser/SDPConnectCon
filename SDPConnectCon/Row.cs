@@ -9,6 +9,7 @@ namespace SDPConnectCon
     {
         internal const char Separator = ';';
         private static readonly NumberFormatInfo DigitalComma = new NumberFormatInfo { NumberDecimalSeparator = "," };
+        private static readonly NumberFormatInfo DigitalDot = new NumberFormatInfo { NumberDecimalSeparator = "."};
 
         private readonly DateTime _date;
 
@@ -96,7 +97,7 @@ namespace SDPConnectCon
                 throw new Exception($"Ошибка приведения номера карты к integer {row.CardNumber}");
             if (
                 !decimal.TryParse(row.PaymentSum, NumberStyles.AllowDecimalPoint,
-                    DigitalComma, out _paymentSum))
+                    DigitalDot, out _paymentSum))
                 throw new Exception($"Ошибка приведения суммы по услуге к decimal {row.PaymentSum}");
             if (
                 !decimal.TryParse(row.Amount, NumberStyles.AllowDecimalPoint,
@@ -178,7 +179,6 @@ namespace SDPConnectCon
                     {
                         fs.WriteLine(lines[row.Index - 1]);
                     }
-                    fs.WriteLine("=");
                     var total = new
                     {
                         TotalAmount = brokenRows.Sum(p => p.Amount),
@@ -186,7 +186,7 @@ namespace SDPConnectCon
                         TotalCommissionSum = brokenRows.Sum(p => p.CommissionSum)
                     };
                     fs.WriteLine(
-                        $"{brokenRows.Length}{Separator}{total.TotalAmount}{Separator}{total.TotalTransferSum}{Separator}{total.TotalCommissionSum}{Separator}{Separator}");
+                        $"={brokenRows.Length}{Separator}{total.TotalAmount}{Separator}{total.TotalTransferSum}{Separator}{total.TotalCommissionSum}{Separator}{Separator}");
                 }
             }
             catch (Exception e)

@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <StartArguments>SDPTest.txt</StartArguments>
+    <StartArguments>SB913_654351_27122016.txt</StartArguments>
   </PropertyGroup>
 </Project>
